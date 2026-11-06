@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fensterhimmel Südwest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  /* Layout: ein Beobachtungsinstrument – großes Fensterbild, darunter die Zeitsteuerung wie am Kamera_operator (Navy + Messing), bewusst nur dunkel */
+  :root {
+    --night: #0B1322;
+    --panel: #121D31;
+    --line: #26354F;
+    --ink: #DCE3EE;
+    --muted: #8D9BB3;
+    --brass: #D4AE55;
+    --sun: #FFCB5C;
+    --star: #F2E6C4;
+    --cyan: #7FD3F5;
+    --display: "Barlow Condensed", "Avenir Next Condensed", "Arial Narrow", sans-serif;
+    --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    color-scheme: dark;
+  }
+  body { background: var(--night); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.5; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 22px 40px; display: grid; gap: 14px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 24px; }
+  h1 { font-family: var(--display); font-weight: 600; font-size: clamp(1.7rem, 3.6vw, 2.4rem); margin: 0; letter-spacing: .01em; }
+  .sub { color: var(--muted); font-size: .92rem; }
+  .stage { position: relative; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); background: #000; cursor: pointer; }
+  canvas { display: block; width: 100%; height: auto; touch-action: manipulation; }
+  .hint { position: absolute; top: 50%; transform: translateY(-50%); font-family: var(--display); font-weight: 600; font-size: 2.2rem; color: rgba(255,255,255,.0); transition: color .2s; pointer-events: none; padding: 0 14px; }
+  .stage:hover .hint { color: rgba(255,255,255,.28); }
+  .hint.l { left: 0; } .hint.r { right: 0; }
+
+  .bar { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px; display: grid; gap: 12px; }
+  .clock { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 22px; }
+  .time { font-family: var(--mono); font-weight: 600; font-size: clamp(1.6rem, 4vw, 2.3rem); font-variant-numeric: tabular-nums; color: var(--brass); }
+  .date { font-family: var(--mono); color: var(--muted); }
+  .state { font-family: var(--display); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; font-size: .95rem; padding: 2px 10px; border-radius: 3px; border: 1.5px solid currentColor; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  button { font: 600 .98rem var(--display); letter-spacing: .03em; color: var(--ink); background: #18263F; border: 1px solid var(--line); border-radius: 4px; padding: 7px 12px; cursor: pointer; font-variant-numeric: tabular-nums; }
+  button:hover { border-color: var(--brass); }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+  button.main { background: var(--brass); color: #1A1406; border-color: var(--brass); }
+  input[type=range] { width: 100%; accent-color: var(--brass); }
+  .rangewrap { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; font-family: var(--mono); font-size: .85rem; color: var(--muted); }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 18px; }
+  .facts div { display: grid; min-width: 0; }
+  .facts span { font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: .08em; font-size: .78rem; color: var(--muted); }
+  .facts b { font-family: var(--mono); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .toggles { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: .92rem; color: var(--muted); }
+  .toggles label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+  .note { color: var(--muted); font-size: .86rem; max-width: 80ch; }
+  @media (prefers-reduced-motion: reduce) { .hint { transition: none; } }
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <h1>Blick aus dem Fenster nach Südwest</h1>
+    <div class="sub">Leipzig · Foto 6.11.2026, 14:33:26 · Ausrichtung aus der Sonnenserie</div>
+  </header>
+
+  <div class="stage" id="stage" title="Links klicken: 10 Minuten zurück · rechts klicken: 10 Minuten vor">
+    <canvas id="cv" width="1600" height="1067" aria-label="Fensterbild mit berechneter Sonne und Sternen zur gewählten Uhrzeit"></canvas>
+    <div class="hint l">‹ −10 min</div><div class="hint r">+10 min ›</div>
+  </div>
+
+  <section class="bar" aria-label="Zeitsteuerung">
+    <div class="clock">
+      <div class="time" id="tTime">14:33</div>
+      <div class="date" id="tDate">Fr 06.11.2026 MEZ</div>
+      <div class="state" id="tState">Tag</div>
+    </div>
+    <div class="btns" role="group" aria-label="Zeit verstellen">
+      <button id="dM">−1 Tag</button>
+      <button id="h1M">−1 h</button>
+      <button id="m10M">−10 min</button>
+      <button id="m1M">−1 min</button>
+      <button id="play" class="main">Abspielen</button>
+      <button id="m1P">+1 min</button>
+      <button id="m10P">+10 min</button>
+      <button id="h1P">+1 h</button>
+      <button id="dP">+1 Tag</button>
+      <button id="toPhoto">Fotozeit</button>
+      <button id="toNow">Jetzt</button>
+    </div>
+    <div class="rangewrap"><span>00:00</span><input type="range" id="slider" min="0" max="1439" step="1" value="873" aria-label="Uhrzeit des Tages"><span>23:59</span></div>
+    <div class="facts">
+      <div><span>Sonne</span><b id="fSun">–</b></div>
+      <div><span>Sonne im Bild</span><b id="fSunPos">–</b></div>
+      <div><span>Sterne im Ausschnitt</span><b id="fStars">–</b></div>
+      <div><span>Hellste sichtbar</span><b id="fBright">–</b></div>
+    </div>
+    <div class="toggles">
+      <label><input type="checkbox" id="oNames" checked> Sternnamen</label>
+      <label><input type="checkbox" id="oGrid" checked> Höhenlinien und Himmelsrichtungen</label>
+      <label><input type="checkbox" id="oPath" checked> Sonnenbahn des Tages</label>
+      <label><input type="checkbox" id="oOrig"> Originalfoto (mit echter Sonne von 14:33)</label>
+    </div>
+    <p class="note">Ausrichtung der Kamera: Azimut 228,0°, Neigung +15,1°, Drehung −2,9°, Brennweite 24 mm (aus zwei Sonnenfotos; die Brennweite ist noch nicht geprüft, Unsicherheit etwa 0,2°). Sterne aus dem Yale-Katalog bis 5,0 mag; Planeten und Mond fehlen. Tagsüber sind die Sterne nur schwach angedeutet, sichtbar werden sie erst, wenn die Sonne mehr als 6° unter dem Horizont steht. Hinter Häusern und Fensterrahmen werden keine Sterne gezeichnet.</p>
+  </section>
+</div>
+
+<script src="katalog.js"></script>
+<script>
+(() => {
+  "use strict";
+  // ---------- feste Daten ----------
+  const LAT = 51.32, LON = 12.39, TZ = 1;   // Ort auf ~1 km gerundet (Auswirkung < 0,01°), Zeitzone MEZ
+  const W = 1600, H = 1067, SCALE = W / 5184;
+  const POSE = { az: 227.972, alt: 15.094, roll: -2.867, f: 5579.2 * SCALE };
+  const PHOTO_UTC = Date.parse("2026-11-06T13:33:26.882Z");
+  const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+
+  // ---------- Astronomie ----------
+  const julian = (ms) => ms / 86400000 + 2440587.5;
+  const gmst = (jd) => { const T = (jd - 2451545) / 36525; return ((280.46061837 + 360.98564736629 * (jd - 2451545) + 0.000387933 * T * T) % 360 + 360) % 360; };
+  function precess(raD, deD, jd) {
+    const T = (jd - 2451545) / 36525;
+    const z1 = (2306.2181 * T + 0.30188 * T * T) / 3600 * D2R, z2 = (2306.2181 * T + 1.09468 * T * T) / 3600 * D2R, th = (2004.3109 * T - 0.42665 * T * T) / 3600 * D2R;
+    const ra = raD * D2R, de = deD * D2R;
+    const A = Math.cos(de) * Math.sin(ra + z1), B = Math.cos(th) * Math.cos(de) * Math.cos(ra + z1) - Math.sin(th) * Math.sin(de), C = Math.sin(th) * Math.cos(de) * Math.cos(ra + z1) + Math.cos(th) * Math.sin(de);
+    return [(Math.atan2(A, B) + z2) * R2D, Math.asin(C) * R2D];
+  }
+  const refr = (a) => a < -1.5 ? 0 : 1 / Math.tan((a + 7.31 / (a + 4.4)) * D2R) / 60;
+  function altaz(raD, deD, jd) {
+    const H = (gmst(jd) + LON - raD) * D2R, de = deD * D2R, ph = LAT * D2R;
+    const alt = Math.asin(Math.sin(ph) * Math.sin(de) + Math.cos(ph) * Math.cos(de) * Math.cos(H)) * R2D;
+    const az = Math.atan2(-Math.cos(de) * Math.sin(H), Math.sin(de) * Math.cos(ph) - Math.cos(de) * Math.sin(ph) * Math.cos(H)) * R2D;
+    return [alt + refr(alt), (az + 360) % 360];
+  }
+  function sunRaDec(jd) {
+    const n = jd - 2451545, L = (280.460 + 0.9856474 * n) % 360, g = ((357.528 + 0.9856003 * n) % 360) * D2R;
+    const lam = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * D2R, eps = (23.439 - 0.0000004 * n) * D2R;
+    return [(Math.atan2(Math.cos(eps) * Math.sin(lam), Math.cos(lam)) * R2D + 360) % 360, Math.asin(Math.sin(eps) * Math.sin(lam)) * R2D];
+  }
+  const sunAltAz = (ms) => { const jd = julian(ms), [r, d] = sunRaDec(jd); return altaz(r, d, jd); };
+  const vec = (alt, az) => { const a = alt * D2R, z = az * D2R; return [Math.cos(a) * Math.sin(z), Math.cos(a) * Math.cos(z), Math.sin(a)]; };
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const AX = (() => {
+    const a = POSE.az * D2R, e = POSE.alt * D2R, r = POSE.roll * D2R;
+    const fwd = [Math.cos(e) * Math.sin(a), Math.cos(e) * Math.cos(a), Math.sin(e)];
+    const r0 = [Math.cos(a), -Math.sin(a), 0], u0 = [r0[1] * fwd[2] - r0[2] * fwd[1], r0[2] * fwd[0] - r0[0] * fwd[2], r0[0] * fwd[1] - r0[1] * fwd[0]];
+    return { fwd, right: r0.map((v, i) => v * Math.cos(r) + u0[i] * Math.sin(r)), up: r0.map((v, i) => -v * Math.sin(r) + u0[i] * Math.cos(r)) };
+  })();
+  function proj(alt, az) {
+    const v = vec(alt, az), z = dot(v, AX.fwd); if (z <= 0.05) return null;
+    return [W / 2 + POSE.f * dot(v, AX.right) / z, H / 2 - POSE.f * dot(v, AX.up) / z];
+  }
+  // Sterne einmal auf das Datum präzedieren
+  const JD0 = julian(PHOTO_UTC);
+  const STARS = KATALOG.map(([ra, de, V, name]) => { const [r, d] = precess(ra, de, JD0); return { ra: r, de: d, V, name }; });
+
+  // ---------- Bilder ----------
+  const cv = document.getElementById("cv"), g = cv.getContext("2d");
+  const imgs = { foto: new Image(), clean: new Image(), mask: new Image() };
+  imgs.foto.src = "foto.jpg"; imgs.clean.src = "foto_ohne_sonne.jpg"; imgs.mask.src = "himmel_maske.png";
+  let maskData = null;
+  const layer = document.createElement("canvas"); layer.width = W; layer.height = H; const lg = layer.getContext("2d");
+  const isSky = (x, y) => { if (!maskData) return true; const X = Math.round(x), Y = Math.round(y); if (X < 0 || Y < 0 || X >= W || Y >= H) return false; return maskData[(Y * W + X) * 4 + 3] > 128; };
+
+  // ---------- Zustand ----------
+  let t = PHOTO_UTC, playing = null;
+  const $ = (id) => document.getElementById(id);
+  const local = (ms) => new Date(ms + TZ * 3600000);
+  const pad = (n) => String(n).padStart(2, "0");
+  const num = (v, n = 1) => v.toFixed(n).replace(".", ",");
+  const WD = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+
+  function skyState(a) {
+    if (a > 0) return ["Tag", "#FFCB5C"];
+    if (a > -6) return ["Bürgerliche Dämmerung", "#F29A5C"];
+    if (a > -12) return ["Nautische Dämmerung", "#7FA9F5"];
+    if (a > -18) return ["Astronomische Dämmerung", "#9B8CF0"];
+    return ["Nacht", "#8D9BB3"];
+  }
+  function skyTint(a) {                     // Farbe + Deckkraft der Himmelsfläche
+    if (a > 8) return [92, 140, 205, 0.62];
+    if (a > 0) { const k = a / 8; return [Math.round(150 - 58 * k), Math.round(130 + 10 * k), Math.round(170 + 35 * k), 0.5 + 0.12 * k]; }
+    if (a > -6) { const k = (a + 6) / 6; return [Math.round(40 + 110 * k), Math.round(55 + 75 * k), Math.round(110 + 60 * k), 0.38 + 0.12 * k]; }
+    if (a > -12) { const k = (a + 12) / 6; return [Math.round(14 + 26 * k), Math.round(22 + 33 * k), Math.round(55 + 55 * k), 0.3 + 0.08 * k]; }
+    return [6, 10, 22, 0.3];
+  }
+
+  function draw() {
+    const [sAlt, sAz] = sunAltAz(t);
+    const showOrig = $("oOrig").checked;
+    g.clearRect(0, 0, W, H);
+    g.drawImage(showOrig ? imgs.foto : imgs.clean, 0, 0, W, H);
+
+    // Himmel einfärben (nur Himmelsfläche)
+    const [r, gg, b, al] = skyTint(sAlt);
+    lg.globalCompositeOperation = "source-over"; lg.clearRect(0, 0, W, H);
+    lg.fillStyle = `rgba(${r},${gg},${b},${showOrig ? al * 0.5 : al})`; lg.fillRect(0, 0, W, H);
+
+    // Sterne
+    const starAlpha = Math.max(0.16, Math.min(1, (-sAlt - 2) / 10));
+    const jd = julian(t); let inView = 0; const bright = [];
+    const names = $("oNames").checked;
+    const placed = [];
+    for (const s of STARS) {
+      const [alt, az] = altaz(s.ra, s.de, jd); if (alt < -1) continue;
+      const p = proj(alt, az); if (!p || p[0] < -10 || p[1] < -10 || p[0] > W + 10 || p[1] > H + 10) continue;
+      inView++;
+      const rad = Math.max(1.1, 4.6 - 0.75 * s.V);
+      lg.fillStyle = `rgba(242,230,196,${starAlpha})`; lg.beginPath(); lg.arc(p[0], p[1], rad, 0, 2 * Math.PI); lg.fill();
+      if (s.V < 1.6) { lg.strokeStyle = `rgba(242,230,196,${starAlpha * 0.5})`; lg.lineWidth = 1; lg.beginPath(); lg.arc(p[0], p[1], rad + 5, 0, 2 * Math.PI); lg.stroke(); }
+      if (s.name && isSky(p[0], p[1])) bright.push([s.V, s.name]);
+      if (names && s.name && s.V < 3.4 && isSky(p[0], p[1])) {
+        const big = s.V < 2.2, txt = s.name;
+        lg.font = `${big ? 600 : 400} ${big ? 17 : 13}px "Atkinson Hyperlegible", system-ui, sans-serif`;
+        const tw = lg.measureText(txt).width, x = p[0] + rad + 6, y = p[1] - 6;
+        if (!placed.some(q => x < q[2] && x + tw > q[0] && y - 14 < q[3] && y > q[1])) {
+          placed.push([x, y - 14, x + tw, y]);
+          lg.fillStyle = `rgba(212,174,85,${Math.max(0.35, starAlpha)})`; lg.fillText(txt, x, y);
+        }
+      }
+    }
+    // nur auf freiem Himmel zeigen
+    lg.globalCompositeOperation = "destination-in"; lg.drawImage(imgs.mask, 0, 0, W, H);
+    g.drawImage(layer, 0, 0);
+
+    // Höhenlinien, Horizont, Himmelsrichtungen
+    if ($("oGrid").checked) {
+      g.lineWidth = 1;
+      for (let h = 0; h <= 40; h += 10) {
+        g.beginPath(); let on = false;
+        for (let a = 150; a <= 310; a += 0.5) { const p = proj(h, a); if (p && p[0] > -200 && p[0] < W + 200) { on ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]); on = true; } else on = false; }
+        g.strokeStyle = h === 0 ? "rgba(255,150,90,.85)" : "rgba(200,205,225,.35)"; g.lineWidth = h === 0 ? 2 : 1; g.stroke();
+        const lp = proj(h, POSE.az - 23.5);
+        if (lp && lp[1] > 16 && lp[1] < H - 10) { g.font = "12px 'JetBrains Mono', monospace"; g.fillStyle = h === 0 ? "rgba(255,150,90,.9)" : "rgba(200,205,225,.7)"; g.fillText(h === 0 ? "Horizont" : h + "°", lp[0] + 4, lp[1] - 5); }
+      }
+      const comp = { 180: "S", 202.5: "SSW", 225: "SW", 247.5: "WSW", 270: "W" };
+      for (let a = 195; a <= 265; a += 5) {
+        const p = proj(0, a); if (!p || p[0] < 0 || p[0] > W) continue;
+        const y = Math.min(p[1], H - 30);
+        g.strokeStyle = "rgba(255,150,90,.85)"; g.lineWidth = 2; g.beginPath(); g.moveTo(p[0], y - 7); g.lineTo(p[0], y + 7); g.stroke();
+        if (a % 10 === 0) { g.font = "600 13px 'JetBrains Mono', monospace"; g.fillStyle = "rgba(255,170,120,.95)"; g.fillText(`${a}°`, p[0] - 14, y + 22); }
+      }
+      for (const [a, n] of Object.entries(comp)) { const p = proj(0, +a); if (!p || p[0] < 0 || p[0] > W) continue; g.font = "700 15px 'Barlow Condensed', sans-serif"; g.fillStyle = "rgba(255,170,120,.95)"; g.fillText(n, p[0] - 8, Math.min(p[1], H - 30) - 12); }
+    }
+
+    // Sonnenbahn des Tages
+    const dayStart = Math.floor((t + TZ * 3600000) / 86400000) * 86400000 - TZ * 3600000;
+    if ($("oPath").checked) {
+      g.beginPath(); let on = false;
+      for (let m = 0; m <= 1440; m += 2) { const ms = dayStart + m * 60000, [a, z] = sunAltAz(ms); const p = a > -4 ? proj(a, z) : null;
+        if (p && p[0] > -400 && p[0] < W + 400) { on ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]); on = true; } else on = false; }
+      g.strokeStyle = "rgba(255,203,92,.6)"; g.lineWidth = 2; g.setLineDash([8, 6]); g.stroke(); g.setLineDash([]);
+      for (let m = 0; m <= 1440; m += 30) { const ms = dayStart + m * 60000, [a, z] = sunAltAz(ms); if (a < -3) continue; const p = proj(a, z); if (!p || p[0] < 0 || p[0] > W || p[1] < 0 || p[1] > H) continue;
+        const full = m % 60 === 0; g.fillStyle = "rgba(255,203,92,.9)"; g.beginPath(); g.arc(p[0], p[1], full ? 5 : 3, 0, 2 * Math.PI); g.fill();
+        if (full) { g.font = "600 14px 'JetBrains Mono', monospace"; g.fillText(`${pad(m / 60)}:00`, p[0] + 9, p[1] - 9); } }
+    }
+
+    // Sonne
+    const sp = sAlt > -2 ? proj(sAlt, sAz) : null;
+    let posText = sAlt < -0.8 ? "unter dem Horizont" : "außerhalb des Bildes";
+    if (sp && sp[0] > -40 && sp[0] < W + 40 && sp[1] > -40 && sp[1] < H + 40) {
+      const rs = 0.267 * D2R * POSE.f;
+      if (isSky(sp[0], sp[1]) && sAlt > -0.8) {
+        const grd = g.createRadialGradient(sp[0], sp[1], 0, sp[0], sp[1], rs * 7);
+        grd.addColorStop(0, "rgba(255,250,225,1)"); grd.addColorStop(0.16, "rgba(255,235,170,.95)"); grd.addColorStop(0.4, "rgba(255,200,110,.35)"); grd.addColorStop(1, "rgba(255,180,90,0)");
+        g.fillStyle = grd; g.beginPath(); g.arc(sp[0], sp[1], rs * 7, 0, 2 * Math.PI); g.fill();
+        g.fillStyle = "#FFF8E4"; g.beginPath(); g.arc(sp[0], sp[1], rs, 0, 2 * Math.PI); g.fill();
+        posText = "frei sichtbar";
+      } else {
+        g.strokeStyle = "rgba(255,203,92,.95)"; g.lineWidth = 2; g.setLineDash([4, 4]); g.beginPath(); g.arc(sp[0], sp[1], rs + 2, 0, 2 * Math.PI); g.stroke(); g.setLineDash([]);
+        posText = sAlt < -0.8 ? "unter dem Horizont" : "hinter Haus oder Rahmen";
+      }
+      g.font = "600 14px 'Atkinson Hyperlegible', sans-serif"; g.fillStyle = "rgba(255,240,200,.95)";
+      g.fillText(`Sonne ${num(sAlt)}°`, sp[0] + rs + 10, sp[1] + rs + 18);
+    }
+
+    // Anzeigen
+    const L = local(t);
+    $("tTime").textContent = `${pad(L.getUTCHours())}:${pad(L.getUTCMinutes())}`;
+    $("tDate").textContent = `${WD[L.getUTCDay()]} ${pad(L.getUTCDate())}.${pad(L.getUTCMonth() + 1)}.${L.getUTCFullYear()} MEZ`;
+    const [st, col] = skyState(sAlt); $("tState").textContent = st; $("tState").style.color = col;
+    $("fSun").textContent = `Höhe ${num(sAlt)}° · Az ${num(sAz)}°`;
+    $("fSunPos").textContent = posText;
+    $("fStars").textContent = `${inView} (bis 5,0 mag)`;
+    bright.sort((a, b) => a[0] - b[0]);
+    $("fBright").textContent = bright.slice(0, 3).map(x => x[1]).join(", ") || "–";
+    $("slider").value = L.getUTCHours() * 60 + L.getUTCMinutes();
+  }
+
+  // ---------- Steuerung ----------
+  const step = (min) => { t += min * 60000; draw(); };
+  const bind = (id, min) => $(id).addEventListener("click", () => step(min));
+  bind("dM", -1440); bind("h1M", -60); bind("m10M", -10); bind("m1M", -1); bind("m1P", 1); bind("m10P", 10); bind("h1P", 60); bind("dP", 1440);
+  $("toPhoto").addEventListener("click", () => { t = PHOTO_UTC; draw(); });
+  $("toNow").addEventListener("click", () => { t = Date.now(); draw(); });
+  $("slider").addEventListener("input", (e) => { const L = local(t); const day = Date.UTC(L.getUTCFullYear(), L.getUTCMonth(), L.getUTCDate()) - TZ * 3600000; t = day + (+e.target.value) * 60000; draw(); });
+  for (const id of ["oNames", "oGrid", "oPath", "oOrig"]) $(id).addEventListener("change", draw);
+  $("stage").addEventListener("click", (e) => { const r = e.currentTarget.getBoundingClientRect(); step(e.clientX - r.left < r.width / 2 ? -10 : 10); });
+  document.addEventListener("keydown", (e) => {
+    if (e.target.tagName === "INPUT" && e.target.type === "range") return;
+    if (e.key === "ArrowLeft") { step(e.shiftKey ? -60 : -10); e.preventDefault(); }
+    if (e.key === "ArrowRight") { step(e.shiftKey ? 60 : 10); e.preventDefault(); }
+  });
+  $("play").addEventListener("click", () => {
+    if (playing) { clearInterval(playing); playing = null; $("play").textContent = "Abspielen"; return; }
+    $("play").textContent = "Anhalten"; playing = setInterval(() => step(4), 60);
+  });
+
+  let loaded = 0;
+  for (const im of Object.values(imgs)) im.onload = () => {
+    if (++loaded < 3) return;
+    const c = document.createElement("canvas"); c.width = W; c.height = H; const cg = c.getContext("2d", { willReadFrequently: true });
+    cg.drawImage(imgs.mask, 0, 0, W, H); maskData = cg.getImageData(0, 0, W, H).data;
+    draw();
+  };
+})();
+</script>
+
+</body>
+</html>
